@@ -3,12 +3,28 @@ import express from 'express';
 import cors from 'cors';
 import pool from './db.js';
 import { calcularTOPSIS } from './topsisService.js';
+import { setupSwagger } from './swagger.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Rota de teste da conexão com o banco de dados
+// Registra a documentação interativa do Swagger na rota /api-docs
+setupSwagger(app);
+
+/**
+ * @openapi
+ * /api/test-db:
+ *   get:
+ *     summary: Testa a conexão com a base de dados PostgreSQL
+ *     tags:
+ *       - Sistema
+ *     responses:
+ *       200:
+ *         description: Conexão efetuada com sucesso.
+ *       500:
+ *         description: Erro na conexão com o banco de dados.
+ */
 app.get('/api/test-db', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
@@ -18,7 +34,21 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// Rota para executar o TOPSIS e guardar a RUN no banco
+/**
+ * @openapi
+ * /api/topsis/executar:
+ *   post:
+ *     summary: Executa o cálculo do TOPSIS e salva a RUN e os resultados no banco
+ *     tags:
+ *       - Algoritmo TOPSIS
+ *     responses:
+ *       200:
+ *         description: TOPSIS calculado e resultados gravados com sucesso.
+ *       400:
+ *         description: Dados insuficientes (falta de critérios ou alternativas no banco).
+ *       500:
+ *         description: Erro ao processar o cálculo ou ao salvar no banco.
+ */
 app.post('/api/topsis/executar', async (req, res) => {
   try {
     const criteriosRes = await pool.query('SELECT * FROM tb_criterio');
