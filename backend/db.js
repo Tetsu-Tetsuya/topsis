@@ -1,14 +1,12 @@
-// backend/db.js
 import pkg from 'pg';
 const { Pool } = pkg;
 
-// Configuração da conexão com o PostgreSQL
 const pool = new Pool({
-  user: 'postgres',          // O seu utilizador do PostgreSQL
-  host: 'localhost',
-  database: 'topsis_db',      // A base de dados que criou no pgAdmin
-  password: '1819', 
-  port: 5432,
+  user: process.env.DB_USER || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_NAME || 'topsis_db',
+  password: process.env.DB_PASSWORD || '1819', // Sua senha local do Postgres
+  port: process.env.DB_PORT || 5432,
 });
 
 export default pool;

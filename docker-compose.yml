@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: topsis_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: topsis_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: topsis_backend
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=postgrespassword
+      - DB_HOST=postgres
+      - DB_NAME=topsis_db
+      - DB_PORT=5432
+    depends_on:
+      - postgres
+
+  frontend:
+    build: ./frontend
+    container_name: topsis_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
