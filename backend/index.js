@@ -43,19 +43,26 @@ app.get('/api/test-db', async (req, res) => {
  *       - Algoritmo TOPSIS
  *     responses:
  *       200:
- *         description: TOPSIS calculado e resultados gravados com sucesso.
+ *         description: TOPSIS calculated and results saved successfully.
  *       400:
- *         description: Dados insuficientes (falta de critérios ou alternativas no banco).
+ *         description: Insufficient data (lack of criteria or alternatives in the database).
  *       500:
- *         description: Erro ao processar o cálculo ou ao salvar no banco.
+ *         description: Error processing computation or saving to the database.
  */
 app.post('/api/topsis/executar', async (req, res) => {
   try {
-    const criteriosRes = await pool.query('SELECT * FROM tb_criterio');
-    const alternativasRes = await pool.query('SELECT * FROM tb_alternativa');
+    // Mapeia colunas das tabelas 'criteria' e 'alternatives' do init.sql
+    const criteriosRes = await pool.query(
+      'SELECT id, name AS nome, weight AS peso, is_benefit FROM criteria'
+    );
+    const alternativasRes = await pool.query(
+      'SELECT id AS id_alternativa, name AS nome FROM alternatives'
+    );
 
     if (alternativasRes.rows.length === 0 || criteriosRes.rows.length === 0) {
-      return res.status(400).json({ error: 'Insira alternativas e critérios na base de dados antes de executar.' });
+      return res.status(400).json({
+        error: 'Insira alternativas e critérios na base de dados antes de executar.'
+      });
     }
 
     const resultadoTopsis = calcularTOPSIS(
@@ -64,21 +71,20 @@ app.post('/api/topsis/executar', async (req, res) => {
       { deliveres: alternativasRes.rows.length }
     );
 
-    // 1. Guardar a RUN
+    // 1. Guardar a RUN na tabela 'runs'
     await pool.query(
-      'INSERT INTO tb_execucao_run (id_run, seed, steps, status) VALUES ($1, $2, $3, $4)',
+      'INSERT INTO runs (id_run, seed, steps, status) VALUES ($1, $2, $3, $4)',
       [resultadoTopsis.id_run, resultadoTopsis.seed, resultadoTopsis.steps, resultadoTopsis.status]
     );
 
-    // 2. Guardar os resultados detalhados
+    // 2. Guardar os resultados detalhados na tabela 'run_results'
     for (const item of resultadoTopsis.resultados) {
       await pool.query(
-        'INSERT INTO tb_resultado_analise (id_run, id_alternativa, score, deliveres, posicao_ranking) VALUES ($1, $2, $3, $4, $5)',
+        'INSERT INTO run_results (id_run, alternative_id, score, deliveres, ranking_position) VALUES ($1, $2, $3, $4, $5)',
         [resultadoTopsis.id_run, item.id_alternativa, item.score, item.deliveres, item.posicao_ranking]
       );
     }
 
-    // Retorna a estrutura com a propriedade score garantida
     res.json(resultadoTopsis);
   } catch (err) {
     res.status(500).json({ error: 'Erro ao processar TOPSIS: ' + err.message });

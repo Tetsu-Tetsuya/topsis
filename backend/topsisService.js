@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import { randomUUID } from 'crypto';
 
 export function calcularTOPSIS(alternativas, criterios, options = {}) {
   const numAlt = alternativas.length;
@@ -8,12 +8,15 @@ export function calcularTOPSIS(alternativas, criterios, options = {}) {
     throw new Error('É necessário pelo menos 1 alternativa e 1 critério.');
   }
 
-  // Se a alternativa tiver valores no banco, usa-os; caso contrário, usa dados genéricos
-  const matriz = alternativas.map(alt => 
-    alt.valores || [Math.random() * 100, Math.random() * 100, Math.random() * 100]
-  );
+  // 1. Extração/Construção da Matriz de Decisão com dimensões corretas
+  const matriz = alternativas.map(alt => {
+    if (Array.isArray(alt.valores) && alt.valores.length === numCrit) {
+      return alt.valores;
+    }
+    return Array.from({ length: numCrit }, () => Math.random() * 100);
+  });
 
-  // 1. Normalização Vetorial
+  // 2. Normalização Vetorial
   const somaQuadrados = Array(numCrit).fill(0);
   for (let j = 0; j < numCrit; j++) {
     for (let i = 0; i < numAlt; i++) {
@@ -27,24 +30,24 @@ export function calcularTOPSIS(alternativas, criterios, options = {}) {
     linha.map((val, j) => val / somaQuadrados[j])
   );
 
-  // 2. Matriz Ponderada
+  // 3. Matriz Ponderada
   const matrizPonderada = matrizNormalizada.map(linha =>
     linha.map((val, j) => val * (Number(criterios[j]?.peso) || 0.33))
   );
 
-  // 3. Soluções Ideais (Positiva A+ e Negativa A-)
+  // 4. Soluções Ideais (Positiva A+ e Negativa A-)
   const idealPositiva = [];
   const idealNegativa = [];
 
   for (let j = 0; j < numCrit; j++) {
     const colValores = matrizPonderada.map(linha => linha[j]);
-    const ehBeneficio = criterios[j]?.tipo === 'BENEFICIO';
+    const ehBeneficio = criterios[j]?.tipo === 'BENEFICIO' || criterios[j]?.is_benefit === true;
 
     idealPositiva[j] = ehBeneficio ? Math.max(...colValores) : Math.min(...colValores);
     idealNegativa[j] = ehBeneficio ? Math.min(...colValores) : Math.max(...colValores);
   }
 
-  // 4. Distâncias e Score
+  // 5. Distâncias e Score
   const resultados = alternativas.map((alt, i) => {
     let distPositiva = 0;
     let distNegativa = 0;
@@ -61,14 +64,14 @@ export function calcularTOPSIS(alternativas, criterios, options = {}) {
     const score = denominador === 0 ? 0 : distNegativa / denominador;
 
     return {
-      id_alternativa: alt.id_alternativa,
+      id_alternativa: alt.id_alternativa || alt.id,
       nome: alt.nome,
-      // Garante que o score nunca seja null/undefined e fique formatado
       score: Number(score.toFixed(4)), 
       deliveres: options.deliveres || alternativas.length
     };
   });
 
+  // 6. Ordenação e atribuição de ranking
   resultados.sort((a, b) => b.score - a.score);
 
   resultados.forEach((res, index) => {
@@ -76,7 +79,7 @@ export function calcularTOPSIS(alternativas, criterios, options = {}) {
   });
 
   return {
-    id_run: options.id_run || `RUN-${crypto.randomUUID().substring(0, 8).toUpperCase()}`,
+    id_run: options.id_run || `RUN-${randomUUID().substring(0, 8).toUpperCase()}`,
     seed: options.seed || Math.floor(Math.random() * 10000),
     steps: options.steps || 5,
     status: 'COMPLETED',
