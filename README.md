@@ -2,6 +2,8 @@
 
 Aplicação Full-Stack para análise multicritério de tomada de decisão em fontes de energia renovável utilizando o algoritmo **TOPSIS** (Technique for Order of Preference by Similarity to Ideal Solution).
 
+> 📖 **Consulte a [Documentação Completa e Manual do Utilizador](https://tetsu-tetsuya.github.io/topsis/)**
+
 ## 🚀 Tecnologias Utilizadas
 - **Frontend:** React.js, Vite, CSS Flexbox
 - **Backend:** Node.js, Express.js
